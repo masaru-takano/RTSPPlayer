@@ -21,7 +21,7 @@ public class H264Packet {
     public H264Packet(final byte[] packet) {
         // Parsing the RTP Packet - http://www.ietf.org/rfc/rfc3984.txt section 5.3
         byte nalUnitOctet = packet[0];
-        nalFBits = (byte) (nalUnitOctet & 0x80);
+        nalFBits = (byte) ((nalUnitOctet & 0x80) >> 15);
         nalNriBits = (byte) (nalUnitOctet & 0x60);
         nalType = (byte) (nalUnitOctet & 0x1F);
 
@@ -30,7 +30,6 @@ public class H264Packet {
             h264NalType = NalType.FULL;
         } else if (nalType == 28) {
             h264NalType = NalType.FUA;
-
         } else if (nalType == 24) {
             h264NalType = NalType.STAPA;
         } else {
@@ -52,10 +51,15 @@ public class H264Packet {
     }
 
     public boolean isStartOfFrame() {
-        return fuStart;
+        return fuStart && h264NalType == NalType.FUA;
     }
 
     public boolean isEndOfFrame() {
-        return fuEnd;
+        return fuEnd && h264NalType == NalType.FUA;
+    }
+
+    @Override
+    public String toString() {
+        return "Type=" + h264NalType + "(=" + nalType + ")" + ", EoF=" + isEndOfFrame();
     }
 }

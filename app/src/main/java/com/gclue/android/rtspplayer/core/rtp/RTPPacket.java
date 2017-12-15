@@ -61,8 +61,8 @@ public class RTPPacket {
 
     public byte[] getPayload() {
         byte[] array = new byte[mPayloadSize];
-        for (int i = HEADER_SIZE; i < mPayloadSize; i++) {
-            array[i] = mPacket[i];
+        for (int i = 0; i < array.length; i++) {
+            array[i] = mPacket[i + HEADER_SIZE];
         }
         return array;
     }

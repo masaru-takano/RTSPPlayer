@@ -99,12 +99,44 @@ public class OffscreenPlayer implements Player {
 
     private Session createSession(final String sessionId, final String absoluteUri) {
         return new Session(sessionId, mStreamSocket, absoluteUri) {
+
+            private long mPreviousTimeStamp = 0;
+
             @Override
             public void onReceiveRTPPacket(final String sessionId, final RTPPacket packet) {
                 H264Packet h264Packet = new H264Packet(packet.getPayload());
-                Log.d(LOG_TAG, "onReceiveRTPPacket: NALU Type = " + h264Packet.h264NalType);
+                //Log.d(LOG_TAG, "onReceiveRTPPacket: H.264 = " + h264Packet.toString());
+
+                long current = System.currentTimeMillis();
+                if (h264Packet.isEndOfFrame()) {
+                    if (mPreviousTimeStamp != 0) {
+                        long delta = current - mPreviousTimeStamp;
+                        Log.d(LOG_TAG, "onReceiveRTPPacket: delta = " + delta + " ms");
+                    }
+                    mPreviousTimeStamp = current;
+                }
             }
         };
+    }
+
+    private static String toString(final byte[] data) {
+        StringBuilder hex = new StringBuilder("");
+        for (int i = 0; i < data.length; i++) {
+            if (i > 0) {
+                hex.append(", ");
+            }
+            hex.append(toString(data[i]));
+        }
+        return hex.toString();
+    }
+
+    private static String toString(final byte b) {
+        int i = (int) b & 0xFF;
+        String hex = Integer.toString(i, 16);
+        if (hex.length() == 1) {
+            hex = "0" + hex;
+        }
+        return "0x" + hex;
     }
 
     @Override

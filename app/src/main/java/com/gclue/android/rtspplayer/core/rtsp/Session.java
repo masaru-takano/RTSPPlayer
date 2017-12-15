@@ -99,7 +99,7 @@ public abstract class Session {
                 while (!Thread.interrupted()) {
                     DatagramPacket packet = new DatagramPacket(mBuffer, mBuffer.length);
                     mStreamSocket.receive(packet);
-                    Log.d("RTP", "UDP Packet: " + packet.getLength() + " bytes");
+                    //Log.d("RTP", "UDP Packet: " + packet.getLength() + " bytes");
 
                     onReceiveRTPPacket(mSessionId, new RTPPacket(packet));
 
