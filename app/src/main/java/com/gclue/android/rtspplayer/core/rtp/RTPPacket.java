@@ -1,6 +1,8 @@
 package com.gclue.android.rtspplayer.core.rtp;
 
 
+import java.net.DatagramPacket;
+
 public class RTPPacket {
     //size of the RTP header:
     static final int HEADER_SIZE = 12;
@@ -24,8 +26,8 @@ public class RTPPacket {
     //Bitstream of the RTP payload
     private byte[] mPacket;
 
-    public RTPPacket(final byte[] packet) {
-        mPacket = packet;
+    public RTPPacket(final DatagramPacket packet) {
+        mPacket = packet.getData();
         Padding = 0;
         Extension = 0;
         CC = 0;
@@ -33,12 +35,12 @@ public class RTPPacket {
         Ssrc = 0;
 
         //check if total packet size is lower than the header size
-        int packetSize = packet.length;
+        int packetSize = packet.getLength();
         if (packetSize >= HEADER_SIZE) {
             //get the header bitsream:
             header = new byte[HEADER_SIZE];
             for (int i = 0; i < HEADER_SIZE; i++) {
-                header[i] = packet[i];
+                header[i] = mPacket[i];
             }
 
             //get the payload bitstream:
@@ -59,7 +61,7 @@ public class RTPPacket {
 
     public byte[] getPayload() {
         byte[] array = new byte[mPayloadSize];
-        for (int i = HEADER_SIZE; i < mPacket.length; i++) {
+        for (int i = HEADER_SIZE; i < mPayloadSize; i++) {
             array[i] = mPacket[i];
         }
         return array;

@@ -16,6 +16,8 @@
 
 package com.biasedbit.efflux.network;
 
+import android.util.Log;
+
 import com.biasedbit.efflux.logging.Logger;
 import com.biasedbit.efflux.packet.CompoundControlPacket;
 import com.biasedbit.efflux.packet.ControlPacket;
@@ -41,6 +43,8 @@ public class ControlPacketDecoder implements ChannelUpstreamHandler {
     // ChannelUpstreamHandler -----------------------------------------------------------------------------------------
 
     public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent evt) throws Exception {
+        Log.d("efflux", "handleUpstream: address = " + evt.getChannel().getLocalAddress());
+
         // Only handle MessageEvent.
         if (!(evt instanceof MessageEvent)) {
             ctx.sendUpstream(evt);

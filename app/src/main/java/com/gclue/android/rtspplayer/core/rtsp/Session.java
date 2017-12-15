@@ -1,11 +1,14 @@
 package com.gclue.android.rtspplayer.core.rtsp;
 
 
+import android.util.Log;
+
 import com.gclue.android.rtspplayer.core.rtp.RTPPacket;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.MulticastSocket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
@@ -18,6 +21,8 @@ public abstract class Session {
     private final DatagramSocket mStreamSocket;
 
     private Thread mUdpThread;
+
+    private SenderReportReceiver mReportReceiver;
 
     public Session(final String sessionId,
                    final DatagramSocket streamSocket,
@@ -44,11 +49,14 @@ public abstract class Session {
         return mSessionId;
     }
 
-    public void startStreaming() throws SocketException {
+    public void startStreaming() throws IOException {
         synchronized (this) {
             if (!isStreaming()) {
                 mUdpThread = new Thread(new Streaming());
                 mUdpThread.start();
+
+                mReportReceiver = new SenderReportReceiver(mStreamSocket.getLocalPort() + 1);
+                //mReportReceiver.start();
             }
         }
     }
@@ -58,6 +66,9 @@ public abstract class Session {
             if (isStreaming()) {
                 mUdpThread.interrupt();
                 mUdpThread = null;
+
+                mReportReceiver.stop();
+                mReportReceiver = null;
             }
         }
     }
@@ -76,7 +87,7 @@ public abstract class Session {
 
     class Streaming implements Runnable {
 
-        static final int BUFFER_SIZE = 1024 * 1024;
+        static final int BUFFER_SIZE = 2048;
 
         private final byte[] mBuffer = new byte[BUFFER_SIZE];
 
@@ -88,7 +99,9 @@ public abstract class Session {
                 while (!Thread.interrupted()) {
                     DatagramPacket packet = new DatagramPacket(mBuffer, mBuffer.length);
                     mStreamSocket.receive(packet);
-                    onReceiveRTPPacket(mSessionId, new RTPPacket(packet.getData()));
+                    Log.d("RTP", "UDP Packet: " + packet.getLength() + " bytes");
+
+                    onReceiveRTPPacket(mSessionId, new RTPPacket(packet));
 
                     try {
                         Thread.sleep(mInterval);
@@ -101,6 +114,49 @@ public abstract class Session {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    class SenderReportReceiver {
+
+        private DatagramSocket mReceiverSocket;
+
+        private Thread mReceiverThread;
+
+        private final int mPort;
+
+        SenderReportReceiver(final int port) {
+            mPort = port;
+        }
+
+        void start() throws IOException {
+            mReceiverSocket = new DatagramSocket(mPort);
+
+            mReceiverThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    byte[] buf = new byte[1024 * 1024];
+                    while (!Thread.interrupted()) {
+                        DatagramPacket reportPacket = new DatagramPacket(buf, buf.length);
+                        try {
+                            Log.d("RTCP", "Receiving Sender Report...: port = " + mReceiverSocket.getLocalPort());
+                            mReceiverSocket.receive(reportPacket);
+                            Log.d("RTCP", "Sender Report: " + reportPacket.getLength());
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            });
+            mReceiverThread.start();
+        }
+
+        void stop() {
+            mReceiverThread.interrupt();
+            mReceiverThread = null;
+
+            mReceiverSocket.close();
+            mReceiverSocket = null;
         }
     }
 }

@@ -3,6 +3,7 @@ package com.gclue.android.rtspplayer.core;
 
 import android.util.Log;
 
+import com.gclue.android.rtspplayer.core.h264.H264Packet;
 import com.gclue.android.rtspplayer.core.rtp.RTPPacket;
 import com.gclue.android.rtspplayer.core.rtsp.RTSPClient;
 import com.gclue.android.rtspplayer.core.rtsp.RTSPResponse;
@@ -100,7 +101,8 @@ public class OffscreenPlayer implements Player {
         return new Session(sessionId, mStreamSocket, absoluteUri) {
             @Override
             public void onReceiveRTPPacket(final String sessionId, final RTPPacket packet) {
-                Log.d(LOG_TAG, "onReceiveRTPPacket: sessionId = " + sessionId);
+                H264Packet h264Packet = new H264Packet(packet.getPayload());
+                Log.d(LOG_TAG, "onReceiveRTPPacket: NALU Type = " + h264Packet.h264NalType);
             }
         };
     }
