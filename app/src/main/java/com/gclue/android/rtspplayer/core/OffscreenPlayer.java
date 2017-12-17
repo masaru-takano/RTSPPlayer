@@ -25,6 +25,10 @@ public class OffscreenPlayer implements Player {
 
     private Session mSession;
 
+    private long mPreviousTimeStamp = 0;
+
+    private boolean mIsStarted;
+
     public OffscreenPlayer() throws IOException {
         mStreamSocket = new DatagramSocket(RTP_PORT);
     }
@@ -62,6 +66,8 @@ public class OffscreenPlayer implements Player {
             default:
                 break;
         }
+
+        mIsStarted = true;
     }
 
     private void onDescribe(final String absoluteUri) throws IOException {
@@ -100,10 +106,12 @@ public class OffscreenPlayer implements Player {
     private Session createSession(final String sessionId, final String absoluteUri) {
         return new Session(sessionId, mStreamSocket, absoluteUri) {
 
-            private long mPreviousTimeStamp = 0;
-
             @Override
             public void onReceiveRTPPacket(final String sessionId, final RTPPacket packet) {
+                if (!mIsStarted) {
+                    return;
+                }
+
                 H264Packet h264Packet = new H264Packet(packet.getPayload());
                 //Log.d(LOG_TAG, "onReceiveRTPPacket: H.264 = " + h264Packet.toString());
 
@@ -111,12 +119,17 @@ public class OffscreenPlayer implements Player {
                 if (h264Packet.isEndOfFrame()) {
                     if (mPreviousTimeStamp != 0) {
                         long delta = current - mPreviousTimeStamp;
-                        Log.d(LOG_TAG, "onReceiveRTPPacket: delta = " + delta + " ms");
+                        //Log.d(LOG_TAG, "onReceiveRTPPacket: delta = " + delta + " ms");
+                        onFrame(delta);
                     }
                     mPreviousTimeStamp = current;
                 }
             }
         };
+    }
+
+    protected void onFrame(final long delta) {
+        // To be implemented by child classes.
     }
 
     private static String toString(final byte[] data) {
@@ -142,6 +155,8 @@ public class OffscreenPlayer implements Player {
     @Override
     public synchronized void stop() throws IOException {
         synchronized (this) {
+            mIsStarted = false;
+
             Session session = mSession;
             if (session != null) {
                 RTSPResponse describeResponse = mClient.teardown(session.getUri(), session.getId());
@@ -154,6 +169,8 @@ public class OffscreenPlayer implements Player {
                 }
             }
             mSession = null;
+
+            mPreviousTimeStamp = 0;
         }
     }
 

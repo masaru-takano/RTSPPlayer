@@ -12,8 +12,13 @@ import android.widget.EditText;
 import com.gclue.android.rtspplayer.core.OffscreenPlayer;
 import com.gclue.android.rtspplayer.core.Player;
 import com.gclue.android.rtspplayer.deviceconnect.DConnectInterface;
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -35,6 +40,11 @@ public class MainActivity extends AppCompatActivity {
     private EditText mHeightEdit;
     private EditText mFpsEdit;
     private EditText mBpsEdit;
+
+    private long mTime = 0;
+    private List<Entry> mChatEntryList = new ArrayList<>();
+    private LineChart mLineChart;
+
     private RemotePreviewServerServiceFinder mServiceFinder;
     private RemotePreviewServerService mPreviewService;
 
@@ -54,6 +64,8 @@ public class MainActivity extends AppCompatActivity {
 
         mBpsEdit = findViewById(R.id.edit_bps);
         mBpsEdit.setText(Integer.toString(DEFAULT_BIT_RATE));
+
+        mLineChart = findViewById(R.id.chart_frame_rate);
 
         Button describeButton = findViewById(R.id.player_button_describe);
         describeButton.setOnClickListener(new View.OnClickListener() {
@@ -105,7 +117,44 @@ public class MainActivity extends AppCompatActivity {
         mVideoView = findViewById(R.id.surface_view);
 
         try {
-            mPlayer = new OffscreenPlayer();
+            mPlayer = new OffscreenPlayer() {
+
+                @Override
+                protected void onFrame(final long delta) {
+                    runOnUiThread(new Runnable() {
+
+                        @Override
+                        public void run() {
+                            synchronized (mChatEntryList) {
+                                float frameRate = 1000f / delta;
+
+                                if (++mTime < 0) {
+                                    mTime = 0;
+                                }
+
+                                mChatEntryList.add(new Entry(mTime, frameRate));
+
+                                if (mChatEntryList.size() > 100) {
+                                    mChatEntryList.remove(0);
+                                }
+
+                                float total = 0;
+                                for (int i = 0; i < mChatEntryList.size(); i++) {
+                                    total += mChatEntryList.get(i).getY();
+                                }
+                                float average = total / mChatEntryList.size();
+
+                                Log.d(TAG, "frame rate: " + average + " fps");
+                            }
+
+                            LineDataSet dataSet = new LineDataSet(mChatEntryList, "FrameRate");
+                            LineData data = new LineData(dataSet);
+                            mLineChart.setData(data);
+                            mLineChart.invalidate();
+                        }
+                    });
+                }
+            };
             //mPlayer = new SimplePlayer(getApplicationContext(), mVideoView);
         } catch (IOException e) {
             e.printStackTrace();
@@ -187,6 +236,7 @@ public class MainActivity extends AppCompatActivity {
             mPlayer.stop();
             mPlayer.disconnect();
         }
+
         if (mPreviewService != null) {
             mPreviewService.shutdown(new RemotePreviewServerService.ServerShutdownListener() {
                 @Override
@@ -200,6 +250,15 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
         }
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mTime = 0;
+                mChatEntryList.clear();
+                mLineChart.clear();
+            }
+        });
     }
 
     private void findStream() {

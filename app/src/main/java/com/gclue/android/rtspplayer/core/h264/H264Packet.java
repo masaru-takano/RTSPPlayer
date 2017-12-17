@@ -51,11 +51,11 @@ public class H264Packet {
     }
 
     public boolean isStartOfFrame() {
-        return fuStart && h264NalType == NalType.FUA;
+        return fuStart;
     }
 
     public boolean isEndOfFrame() {
-        return fuEnd && h264NalType == NalType.FUA;
+        return fuEnd;
     }
 
     @Override

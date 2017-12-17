@@ -105,4 +105,9 @@
         android:visibility="gone"
         android:id="@+id/surface_view" />
 
+    <com.github.mikephil.charting.charts.LineChart
+        android:id="@+id/chart_frame_rate"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
 </LinearLayout>
